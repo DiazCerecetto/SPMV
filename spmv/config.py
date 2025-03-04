@@ -118,5 +118,5 @@ class Config:
             self.PARAM_GRID = param_grid
 
     @staticmethod
-    def get_version(self):
+    def get_version():
         return "0.0.1"
