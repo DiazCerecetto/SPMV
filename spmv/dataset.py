@@ -65,7 +65,7 @@ class DatasetManager:
         self.image_manager = image_manager
         
         
-    def create_datasets(self,data, save=True, processed_data_dirname = 'processed_data', verbose = True):
+    def create_datasets(self, data, save=True, processed_data_dirname = 'processed_data', verbose = True):
         
         processed_data_dir = os.path.join(self.config.BASE_PATH, processed_data_dirname)
         os.makedirs(processed_data_dir, exist_ok=True)
@@ -120,7 +120,7 @@ class DatasetManager:
 
         return data_train, data_val, data_test, X_train, X_val, X_test, y_train, y_val, y_test
 
-    def create_dataloaders(train_df, val_df, label2idx, transform, batch_size=8):
+    def create_dataloaders(self, train_df, val_df, label2idx, transform, batch_size=8):
         train_loader = DataLoader(
             CustomDataset(train_df, label2idx=label2idx, transform=transform),
             batch_size=batch_size, shuffle=True, drop_last=True
@@ -132,12 +132,15 @@ class DatasetManager:
         return train_loader, val_loader
 
     def download_images_and_set_data(self, data, verbose=True):
-
+        count = 0
         for i, row in data.iterrows():
             if verbose:
-                print(f"Procesando fila {i+1}/{len(data)}")
+                print(f"Procesando fila {count+1}/{len(data)}")
+                count += 1
             self.image_manager.descargar_imagen_png(
-                row['group'], row['matrix'], carpeta_png=self.config.PATH_CARPETA_MATRICES_PNG
+                row['group'], 
+                row['matrix'], 
+                carpeta_png=self.config.PATH_CARPETA_MATRICES_PNG
             )
             archivo = os.path.join(self.config.PATH_CARPETA_MATRICES_PNG, f"{row['matrix']}.png")
             data.at[i, 'path_png'] = archivo
