@@ -8,8 +8,8 @@ from spmv.image_manager import ImageManager
 
 class DatasetManager:
     
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, config):
+        self.config = config
         
     def create_datasets(self,data, save=True, processed_data_dirname = 'processed_data', verbose = True):
         

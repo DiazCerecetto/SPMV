@@ -2,8 +2,8 @@ from sklearn.preprocessing import LabelEncoder
 from spmv.config import Config
 
 class DataCleaner:
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, config):
+        self.config = config
 
     def clean_data_input(self,data):
         data = data.drop(columns=self.config.columns, errors='ignore')
