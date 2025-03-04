@@ -38,7 +38,7 @@ class DataCleaner:
         self.config = config
 
     def clean_data_input(self,data):
-        data = data.drop(columns=self.config.columns, errors='ignore')
+        data = data.drop(columns=self.config.columns_to_drop, errors='ignore')
         data.drop(columns=data.columns[data.isna().all()].tolist(), inplace=True, errors='ignore')
         data.dropna(inplace=True)
         assert not data.isna().values.any()
