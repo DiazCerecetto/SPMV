@@ -13,7 +13,7 @@ import torch
 class Config:
     def __init__(
         self,
-        drive=True,
+        use_drive=True,
         drive_path="/content/drive",
         seed: int = 123,
         base_path: str = "/content/drive/MyDrive/ALN/tarea_final",
@@ -44,7 +44,7 @@ class Config:
         models=None,
         param_grid=None,
     ):
-        if drive:
+        if use_drive:
             drive.mount(drive_path)
 
         self.SEED = seed
