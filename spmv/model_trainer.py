@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from config import Config
+from spmv.config import Config
 
 class ModelTrainer:
     def train_and_evaluate_model(self, model_name, model, param_grid, X_train, y_train, X_val, y_val):

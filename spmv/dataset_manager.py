@@ -2,8 +2,8 @@ from config import Config
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from data_cleaner import DataCleaner
-from image_manager import ImageManager
+from spmv.data_cleaner import DataCleaner
+from spmv.image_manager import ImageManager
 
 
 class DatasetManager:

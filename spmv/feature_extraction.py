@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from config import Config
+from spmv.config import Config
 from torchvision import models
 
 from sklearn.decomposition import TruncatedSVD

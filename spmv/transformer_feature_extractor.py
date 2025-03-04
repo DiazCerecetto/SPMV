@@ -6,10 +6,9 @@ import torch
 
 from sklearn.decomposition import TruncatedSVD
 
-
 import plotly.express as px
 from transformers import ViTModel, ViTImageProcessor
-from config import Config
+from spmv.config import Config
 
 
 class TransformerFeatureExtractor:

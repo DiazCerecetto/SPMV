@@ -1,5 +1,5 @@
 from sklearn.preprocessing import LabelEncoder
-from config import Config
+from spmv.config import Config
 
 class DataCleaner:
     def __init__(self):
