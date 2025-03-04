@@ -1,4 +1,4 @@
-from config import Config
+from spmv.config import Config
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
