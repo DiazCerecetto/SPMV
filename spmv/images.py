@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 class ImageManager:
     
-    def descargar_imagen_png(self,grupo, matriz, carpeta_png):
+    def descargar_imagen_png(self, grupo, matriz, carpeta_png):
         os.makedirs(carpeta_png, exist_ok=True)
         archivo_png = os.path.join(carpeta_png, f"{matriz}.png")
         url_png = f"https://sparse-files-images.engr.tamu.edu/{grupo}/{matriz}.png"
@@ -77,7 +77,7 @@ class ImageManager:
         for count, (_, row) in enumerate(data.iterrows(), start=1):
             print(f"Procesando {conjunto} {count}/{len(data)}")
             img = Image.open(row['path_png']).convert('RGB')
-            cropped_img = ImageManager.crop_to_content(img)
+            cropped_img = self.crop_to_content(img)
             cropped_img.save(row['path_png'])
 
     def mostrar_muestra_recorte(self, data, n_muestra=5, conjunto=""):
@@ -85,7 +85,7 @@ class ImageManager:
         _, axes = plt.subplots(n_muestra, 2, figsize=(10, n_muestra * 5))
         for i, (_, row) in enumerate(muestra.iterrows()):
             img = Image.open(row['path_png']).convert('RGB')
-            cropped_img = ImageManager.crop_to_content(img)
+            cropped_img = self.crop_to_content(img)
 
             axes[i, 0].imshow(img)
             axes[i, 0].set_title(f"{conjunto} - Original")
@@ -135,7 +135,7 @@ class ImageManager:
         return sorted(image_shapes, key=lambda x: x[0][0] * x[0][1], reverse=True)
 
     def get_unusual_images(self, data, limit=10):
-        sorted_shapes = ImageManager.get_image_shapes(data)
+        sorted_shapes = self.get_image_shapes(data)
         print("Image Shapes (Largest to Smallest):")
         for i in range(min(limit, len(sorted_shapes))):
             shape, path = sorted_shapes[i]
