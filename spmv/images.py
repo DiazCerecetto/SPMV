@@ -11,6 +11,10 @@ class ImageManager:
     def descargar_imagen_png(self, grupo, matriz, carpeta_png):
         os.makedirs(carpeta_png, exist_ok=True)
         archivo_png = os.path.join(carpeta_png, f"{matriz}.png")
+        if os.path.exists(archivo_png):
+            print(f"Archivo {archivo_png} ya existe. Saltando descarga.")
+            return
+
         url_png = f"https://sparse-files-images.engr.tamu.edu/{grupo}/{matriz}.png"
         try:
             response = requests.get(url_png, stream=True)
