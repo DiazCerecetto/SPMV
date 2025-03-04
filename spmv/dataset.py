@@ -112,9 +112,9 @@ class DatasetManager:
             y_val.to_csv(os.path.join(processed_data_dir, 'y_val.csv'), index=False)
             y_test.to_csv(os.path.join(processed_data_dir, 'y_test.csv'), index=False)
 
-            data_train.to_csv(os.path.join(self.config.BASE_PATH, 'data_train.csv'), index=False)
-            data_val.to_csv(os.path.join(self.config.BASE_PATH, 'data_val.csv'), index=False)
-            data_test.to_csv(os.path.join(self.config.BASE_PATH, 'data_test.csv'), index=False)
+            data_train.to_csv(os.path.join(processed_data_dir, 'data_train.csv'), index=False)
+            data_val.to_csv(os.path.join(processed_data_dir, 'data_val.csv'), index=False)
+            data_test.to_csv(os.path.join(processed_data_dir, 'data_test.csv'), index=False)
 
             print(f"Datasets procesados en: {processed_data_dir}")
 

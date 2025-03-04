@@ -80,23 +80,6 @@ class ImageManager:
             cropped_img = self.crop_to_content(img)
             cropped_img.save(row['path_png'])
 
-    def mostrar_muestra_recorte(self, data, n_muestra=5, conjunto=""):
-        muestra = data.sample(n=n_muestra)
-        _, axes = plt.subplots(n_muestra, 2, figsize=(10, n_muestra * 5))
-        for i, (_, row) in enumerate(muestra.iterrows()):
-            img = Image.open(row['path_png']).convert('RGB')
-            cropped_img = self.crop_to_content(img)
-
-            axes[i, 0].imshow(img)
-            axes[i, 0].set_title(f"{conjunto} - Original")
-            axes[i, 0].axis('off')
-
-            axes[i, 1].imshow(cropped_img)
-            axes[i, 1].set_title(f"{conjunto} - Recortada")
-            axes[i, 1].axis('off')
-        plt.tight_layout()
-        plt.show()
-
     def plot_images_by_label(self, data, num_images_per_row=5):
         labels = data['ganador'].unique()
         labels.sort()
@@ -132,7 +115,7 @@ class ImageManager:
                         image_shapes.append((img.size, image_path))
                 except (IOError, OSError) as e:
                     print(f"Error opening image {image_path}: {e}")
-        return sorted(image_shapes, key=lambda x: x[0][0] * x[0][1], reverse=True)
+        return sorted(image_shapes, key=lambda x: x[0][0] * x[0][1], reverse=False)
 
     def get_unusual_images(self, data, limit=10):
         sorted_shapes = self.get_image_shapes(data)
