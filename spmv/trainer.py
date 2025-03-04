@@ -6,9 +6,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from spmv.config import Config
 
-class ModelTrainer:
+class Trainer:
+    def __init__(self, config):
+        self.config = config
+    
     def train_and_evaluate_model(self, model_name, model, param_grid, X_train, y_train, X_val, y_val):
         pipeline = Pipeline([
             ('scaler', StandardScaler()),
@@ -53,9 +55,9 @@ class ModelTrainer:
 
     def train_evaluate_models(self, X_train, y_train, X_val, y_val, models=None, param_grid=None):
         if models is None:
-            models = Config.MODELS
+            models = self.config.MODELS
         if param_grid is None:
-            param_grid = Config.PARAM_GRID
+            param_grid = self.config.PARAM_GRID
 
         evaluation_results = {}
         f1_scores = []

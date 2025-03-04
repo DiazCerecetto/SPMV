@@ -18,8 +18,6 @@ from torchvision import models
 from sklearn.decomposition import PCA, TruncatedSVD
 from transformers import ViTModel, ViTImageProcessor
 
-from spmv.config import Config
-
 
 class FeatureExtractor:
     def __init__(self, config):
