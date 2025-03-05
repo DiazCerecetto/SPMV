@@ -182,7 +182,7 @@ class DatasetManager:
         data_test = pd.read_csv(os.path.join(self.config.PATH_FEATURES_ADICIONALES, f"data_test_{name}.csv"))
         return data_train, data_val, data_test
 
-    def get_X_y(df, cols_to_drop):
+    def get_X_y(self,df, cols_to_drop):
         y = df["ganador_encoded"].astype(int)
         X = df.drop(columns=cols_to_drop, errors="ignore")
         return X, y
