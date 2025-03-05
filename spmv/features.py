@@ -17,7 +17,7 @@ from skimage.feature import hog # type: ignore
 from torchvision import models
 from sklearn.decomposition import PCA, TruncatedSVD
 from transformers import ViTModel, ViTImageProcessor
-
+from torchvision import transforms
 
 class FeatureExtractor:
     def __init__(self, config):
@@ -194,7 +194,8 @@ class FeatureExtractor:
         model_pretrained.eval()
         return model_pretrained
 
-    def extract_features_to_df(self, df, model, transform, device=torch.device("cpu"), prefix="feat"):
+    def extract_features_to_df(self, df, model, transform_size = 224, device=torch.device("cpu"), prefix="feat"):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
         model.eval()
         model.to(device)
         df_out = df.copy()
@@ -211,7 +212,8 @@ class FeatureExtractor:
             df_out[f"{prefix}_{dim_idx}"] = all_features[:, dim_idx]
         return df_out
 
-    def extract_features_with_svd(self, df, model, transform, device=torch.device("cpu"), svd_components=10, prefix="svd_feat"):
+    def extract_features_with_svd(self, df, model, transform_size=224, device=torch.device("cpu"), svd_components=10, prefix="svd_feat"):
+        transform=transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
         model.eval()
         model.to(device)
         df_out = df.copy()
@@ -274,11 +276,12 @@ class FeatureExtractor:
         data,
         model,
         processor=None,
-        transform=None,
+        transform_size=224,
         num_images_per_class=20,
         dimension=3,
         device=None
     ):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
         device = self.config.device
         model.eval()
         all_features = []
@@ -298,7 +301,7 @@ class FeatureExtractor:
                         model = model.to(device)
                         features = model(img_tensor).cpu().numpy().flatten()
                     else:
-                        raise ValueError("Debes proporcionar un 'processor' o un 'transform'.")
+                        raise ValueError("Debes proporcionar un 'processor' o un 'transform size'.")
                     all_features.append(features)
                     all_labels.append(class_label)
         all_features = np.array(all_features)
@@ -310,7 +313,8 @@ class FeatureExtractor:
         else:
             self._plot_svd_3d(df_plot)
 
-    def test_resnet(self, data, transform, num_images_per_class=20, dimension=3):
+    def test_resnet(self, data, transform_size = 224, num_images_per_class=20, dimension=3):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         resnet.fc = nn.Identity()

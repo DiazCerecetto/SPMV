@@ -9,11 +9,12 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import torch
 import pandas as pd
-
+from torchvision import transforms
 class CustomDataset(Dataset):
-    def __init__(self, df: pd.DataFrame, label2idx: dict, transform=None):
+    def __init__(self, df: pd.DataFrame, label2idx: dict, transform_size=224):
         self.df = df.reset_index(drop=True)
-        self.transform = transform
+        self.transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+
         self.label2idx = label2idx
 
     def __len__(self):
@@ -120,7 +121,9 @@ class DatasetManager:
 
         return data_train, data_val, data_test, X_train, X_val, X_test, y_train, y_val, y_test
 
-    def create_dataloaders(self, train_df, val_df, label2idx, transform, batch_size=8):
+    def create_dataloaders(self, train_df, val_df, label2idx, transform_size =224, batch_size=8):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+
         train_loader = DataLoader(
             CustomDataset(train_df, label2idx=label2idx, transform=transform),
             batch_size=batch_size, shuffle=True, drop_last=True
