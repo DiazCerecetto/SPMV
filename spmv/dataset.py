@@ -12,10 +12,12 @@ import torch
 import pandas as pd
 from torchvision import transforms
 class CustomDataset(Dataset):
-    def __init__(self, df: pd.DataFrame, label2idx: dict, transform_size=224):
+    def __init__(self, df: pd.DataFrame, label2idx: dict, transform=None):
+        if transform is None:
+            transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+            print("Transformación por defecto: ", transform)
         self.df = df.reset_index(drop=True)
-        self.transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
-
+        self.transform = transform
         self.label2idx = label2idx
 
     def __len__(self):
