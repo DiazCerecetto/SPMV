@@ -197,6 +197,7 @@ class FeatureExtractor:
 
     def extract_features_to_df(self, df, model, transform_size=224, prefix="feat"):
         transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
+        
         model.eval()
         model.to(self.config.device)
         df_out = df.copy()
@@ -373,6 +374,7 @@ class FeatureExtractor:
             self._plot_svd_2d(df_plot)
         else:
             self._plot_svd_3d(df_plot)
+        return df_plot
 
     def test_vit(self, data, num_images_per_class=20, dimension=3):
         processor_vit = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
