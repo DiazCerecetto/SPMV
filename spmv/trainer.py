@@ -166,7 +166,7 @@ class Trainer:
         return model
     
 
-    def evaluate_all_scenarios_random_forest(all_scenarios, param_grid, train_and_evaluate_model, ver_matriz_confusion, config):
+    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, config):
         all_results = {}
         modelos = {
             'randomforest': Pipeline([
@@ -183,7 +183,7 @@ class Trainer:
             evaluation_results = {}
             f1_scores = []
 
-            best_model, results, conf_matrix = train_and_evaluate_model(
+            best_model, results, conf_matrix = self.train_and_evaluate_model(
                 "randomforest",
                 modelos['randomforest'],
                 param_grid,
@@ -213,7 +213,7 @@ class Trainer:
             print("Evaluation Results (Classification Report):")
             print(pd.DataFrame(results).T)
             print("Confusion Matrix:")
-            ver_matriz_confusion("randomforest", conf_matrix)
+            self.ver_matriz_confusion("randomforest", conf_matrix)
             print("Tabla de F1-Scores:")
             print(all_results[scenario_name]["f1_scores"])
             print("="*50)
