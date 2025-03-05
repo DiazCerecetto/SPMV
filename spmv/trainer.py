@@ -166,11 +166,11 @@ class Trainer:
         return model
     
 
-    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, config):
+    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
         all_results = {}
         modelos = {
             'randomforest': Pipeline([
-                ('randomforest', RandomForestClassifier(random_state=config.SEED))
+                ('randomforest', RandomForestClassifier(random_state=self.config.SEED))
             ])
         }
         for scenario_name, data_dict in all_scenarios.items():
