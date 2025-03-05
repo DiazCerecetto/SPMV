@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from spmv.images import ImageManager
 from sklearn.preprocessing import LabelEncoder
+import shutil
 
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
@@ -173,3 +174,27 @@ class DatasetManager:
         data_test  = pd.read_csv(os.path.join(path_datasets, 'data_test.csv'))
         return data_train, data_val, data_test
 
+    def organize_images_for_yolo(self, data_train, data_val, data_test):
+        dataset_yolo = self.config.DATASET_YOLO
+        splits = ['train', 'val', 'test']
+        for split in splits:
+            os.makedirs(os.path.join(dataset_yolo, split), exist_ok=True)
+        all_winners = pd.concat([data_train, data_val, data_test])['ganador'].unique().tolist()
+        for split in splits:
+            for cls in all_winners:
+                os.makedirs(os.path.join(dataset_yolo, split, cls), exist_ok=True)
+
+        def copy_images_for_split(df, split_name):
+            split_path = os.path.join(dataset_yolo, split_name)
+            for _, row in df.iterrows():
+                clase = row['ganador']
+                src_path = row['path_png']
+                if not os.path.isfile(src_path):
+                    continue
+                dst_dir = os.path.join(split_path, clase)
+                os.makedirs(dst_dir, exist_ok=True)
+                shutil.copy2(src_path, os.path.join(dst_dir, os.path.basename(src_path)))
+
+        copy_images_for_split(data_train, 'train')
+        copy_images_for_split(data_val,   'val')
+        copy_images_for_split(data_test,  'test')
