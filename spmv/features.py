@@ -495,8 +495,7 @@ class FeatureExtractor:
         features_df['time_extraction_sec'] = times
         return pd.concat([df.reset_index(drop=True), features_df], axis=1)
     
-    def extract_features_yolo(self, df, model_path, imgsz=224):
-        model = YOLO(model_path)
+    def extract_features_yolo(self, df, model, imgsz=224):
         paths = []
         times = []
         features_list = []

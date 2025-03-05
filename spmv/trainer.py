@@ -98,7 +98,7 @@ class Trainer:
                     labels.append(cls)
         return paths, labels
 
-    def investigate_best_yolo(self, models_paths, dataset_path, val_folder, runs_folder, epochs=10, imgsz=1024):
+    def investigate_best_yolo(self, models_paths, dataset_path, val_folder, epochs=10, imgsz=1024):
         best_model = None
         best_macro_f1 = -1
         for mp in models_paths:
@@ -110,7 +110,7 @@ class Trainer:
                 imgsz=imgsz,
                 device='cuda',
                 augment=False,
-                project=runs_folder,
+                project=self.config.RUNS_FOLDER,
                 name=model_name
             )
             imgs, labels = self._get_val_images_and_labels(val_folder)
@@ -133,7 +133,7 @@ class Trainer:
                 best_model = mp
         return best_model
 
-    def tune_best_yolo(self, model_path, dataset_path, runs_folder, epochs=10, iterations=30, imgsz=224):
+    def tune_best_yolo(self, model_path, dataset_path, epochs=10, iterations=30, imgsz=224):
         model = YOLO(model_path)
         model.tune(
             data=dataset_path,
@@ -146,9 +146,20 @@ class Trainer:
             save=True,
             val=True,
             augment=False,
-            project=runs_folder,
+            project=self.config.RUNS_FOLDER,
             name='best_tune',
         )
-        tuned_model_path = os.path.join(runs_folder, 'best_tune', 'weights', 'best.pt')
-        print('Mejor modelo en: ', tuned_model_path)
-        return tuned_model_path
+        
+    def train_best_model(self, model_name, dataset_path, epochs=25, hyp=None, imgsz=224):
+        model = YOLO(model_name)
+        model.train(
+            data=dataset_path,
+            epochs=epochs,
+            imgsz=imgsz,
+            device='cuda',
+            augment=False,
+            project=self.config.RUNS_FOLDER,
+            name=model_name,
+            **hyp
+        )
+        return model
