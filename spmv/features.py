@@ -499,21 +499,27 @@ class FeatureExtractor:
         paths = []
         times = []
         features_list = []
+
         for _, row in df.iterrows():
             p = row['path_png']
             start = time.perf_counter()
-            r = model.predict(source=p, imgsz=imgsz, device='cuda', verbose=False)
+
+            results = model.predict(source=p, imgsz=imgsz, device='cuda', verbose=False)
+
             end = time.perf_counter()
             times.append(end - start)
-            probs_vec = None
-            if r and hasattr(r[0], 'probs') and r[0].probs is not None:
-                probs_vec = r[0].probs.cpu().numpy()
+
+            if results and hasattr(results[0], "probs") and results[0].probs is not None:
+                probs_vec = results[0].probs.data.cpu().numpy()
             else:
                 probs_vec = np.zeros(len(model.model.names), dtype=float)
+
             features_list.append(probs_vec)
             paths.append(p)
+
         features_arr = np.vstack(features_list)
         for i in range(features_arr.shape[1]):
             df[f'yolo_feat_{i}'] = features_arr[:, i]
         df['time_extraction_sec'] = times
         return df
+
