@@ -19,6 +19,7 @@ from torchvision import models
 from sklearn.decomposition import PCA, TruncatedSVD
 from transformers import ViTModel, ViTImageProcessor
 from torchvision import transforms
+from ultralytics import YOLO # type: ignore
 
 class FeatureExtractor:
     def __init__(self, config):
@@ -493,3 +494,27 @@ class FeatureExtractor:
         features_df = pd.DataFrame(feature_list, columns=[f'feature_{i}' for i in range(1, 21)])
         features_df['time_extraction_sec'] = times
         return pd.concat([df.reset_index(drop=True), features_df], axis=1)
+    
+    def extract_features_yolo(self, df, model_path, imgsz=224):
+        model = YOLO(model_path)
+        paths = []
+        times = []
+        features_list = []
+        for _, row in df.iterrows():
+            p = row['path_png']
+            start = time.perf_counter()
+            r = model.predict(source=p, imgsz=imgsz, device='cuda', verbose=False)
+            end = time.perf_counter()
+            times.append(end - start)
+            probs_vec = None
+            if r and hasattr(r[0], 'probs') and r[0].probs is not None:
+                probs_vec = r[0].probs.cpu().numpy()
+            else:
+                probs_vec = np.zeros(len(model.model.names), dtype=float)
+            features_list.append(probs_vec)
+            paths.append(p)
+        features_arr = np.vstack(features_list)
+        for i in range(features_arr.shape[1]):
+            df[f'yolo_feat_{i}'] = features_arr[:, i]
+        df['time_extraction_sec'] = times
+        return df

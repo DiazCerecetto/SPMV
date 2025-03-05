@@ -6,6 +6,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from ultralytics import YOLO #type: ignore
+from sklearn.metrics import f1_score
+import numpy as np
+import pandas as pd
+import os
+import glob
 
 class Trainer:
     def __init__(self, config):
@@ -80,3 +86,69 @@ class Trainer:
             })
 
         return evaluation_results, f1_scores
+
+
+    def _get_val_images_and_labels(self, val_folder):
+        paths, labels = [], []
+        for cls in os.listdir(val_folder):
+            d = os.path.join(val_folder, cls)
+            if os.path.isdir(d):
+                for f in glob.glob(os.path.join(d, '*')):
+                    paths.append(f)
+                    labels.append(cls)
+        return paths, labels
+
+    def investigate_best_yolo(self, models_paths, dataset_path, val_folder, runs_folder, epochs=10, imgsz=1024):
+        best_model = None
+        best_macro_f1 = -1
+        for mp in models_paths:
+            model_name = os.path.splitext(os.path.basename(mp))[0]
+            model = YOLO(mp)
+            model.train(
+                data=dataset_path,
+                epochs=epochs,
+                imgsz=imgsz,
+                device='cuda',
+                augment=False,
+                project=runs_folder,
+                name=model_name
+            )
+            imgs, labels = self._get_val_images_and_labels(val_folder)
+            preds = []
+            for img in imgs:
+                r = model.predict(source=img, imgsz=imgsz, device='cuda', verbose=False)
+                pred_index = None
+                if r and hasattr(r[0], 'pred') and r[0].pred.size > 0:
+                    pred_index = int(r[0].pred[0])
+                elif r and hasattr(r[0], 'probs'):
+                    pred_index = int(r[0].probs.top1)
+                if pred_index is not None:
+                    names = model.model.names if hasattr(model.model, 'names') else {}
+                    preds.append(names.get(pred_index, str(pred_index)))
+                else:
+                    preds.append("unknown")
+            macro_f1 = f1_score(labels, preds, average='macro', zero_division=0)
+            if macro_f1 > best_macro_f1:
+                best_macro_f1 = macro_f1
+                best_model = mp
+        return best_model
+
+    def tune_best_yolo(self, model_path, dataset_path, runs_folder, epochs=10, iterations=30, imgsz=224):
+        model = YOLO(model_path)
+        model.tune(
+            data=dataset_path,
+            epochs=epochs,
+            iterations=iterations,
+            imgsz=imgsz,
+            device='cuda',
+            optimizer="AdamW",
+            plots=True,
+            save=True,
+            val=True,
+            augment=False,
+            project=runs_folder,
+            name='best_tune',
+        )
+        tuned_model_path = os.path.join(runs_folder, 'best_tune', 'weights', 'best.pt')
+        print('Mejor modelo en: ', tuned_model_path)
+        return tuned_model_path
