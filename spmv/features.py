@@ -1,6 +1,7 @@
 import os
 import cv2
 import torch
+import time
 import numpy as np
 import pandas as pd
 import torch.nn as nn
@@ -138,7 +139,6 @@ class FeatureExtractor:
         num_samples_for_pca=50,
         label2class=None
     ):
-        
         device = self.config.device
         os.makedirs(save_dir, exist_ok=True)
         model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
@@ -194,41 +194,51 @@ class FeatureExtractor:
         model_pretrained.eval()
         return model_pretrained
 
-    def extract_features_to_df(self, df, model, transform_size = 224, device=torch.device("cpu"), prefix="feat"):
-        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+    def extract_features_to_df(self, df, model, transform_size=224, device=torch.device("cpu"), prefix="feat"):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         model.eval()
         model.to(device)
         df_out = df.copy()
         all_features = []
+        times = []
         for _, row in tqdm(df_out.iterrows(), total=len(df_out)):
             img = Image.open(row["path_png"]).convert("RGB")
+            start = time.perf_counter()
             img_tensor = transform(img).unsqueeze(0).to(device)
             with torch.no_grad():
                 features = model(img_tensor)
             features = features.squeeze().cpu().numpy()
+            end = time.perf_counter()
+            times.append(end - start)
             all_features.append(features)
         all_features = np.array(all_features)
         for dim_idx in range(all_features.shape[1]):
             df_out[f"{prefix}_{dim_idx}"] = all_features[:, dim_idx]
+        df_out["time_extraction_sec"] = times
         return df_out
 
     def extract_features_with_svd(self, df, model, transform_size=224, device=torch.device("cpu"), svd_components=10, prefix="svd_feat"):
-        transform=transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         model.eval()
         model.to(device)
         df_out = df.copy()
         all_features = []
+        times = []
         for _, row in tqdm(df_out.iterrows(), total=len(df_out)):
             img = Image.open(row["path_png"]).convert("RGB")
+            start = time.perf_counter()
             img_tensor = transform(img).unsqueeze(0).to(device)
             with torch.no_grad():
                 features = model(img_tensor)
+            end = time.perf_counter()
+            times.append(end - start)
             all_features.append(features.squeeze().cpu().numpy())
         all_features = np.array(all_features)
         svd = TruncatedSVD(n_components=svd_components)
         reduced_features = svd.fit_transform(all_features)
         for dim_idx in range(svd_components):
             df_out[f"{prefix}_{dim_idx}"] = reduced_features[:, dim_idx]
+        df_out["time_extraction_sec"] = times
         return df_out
 
     def _apply_svd(self, features, dimension):
@@ -281,7 +291,7 @@ class FeatureExtractor:
         dimension=3,
         device=None
     ):
-        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         device = self.config.device
         model.eval()
         all_features = []
@@ -313,8 +323,8 @@ class FeatureExtractor:
         else:
             self._plot_svd_3d(df_plot)
 
-    def test_resnet(self, data, transform_size = 224, num_images_per_class=20, dimension=3):
-        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)),transforms.ToTensor()])
+    def test_resnet(self, data, transform_size=224, num_images_per_class=20, dimension=3):
+        transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
         resnet.fc = nn.Identity()
@@ -401,13 +411,17 @@ class FeatureExtractor:
 
     def generar_features_limited_block_sampling(self, df, num_blocks_h=4, num_blocks_w=5):
         feature_list = []
+        times = []
         for _, row in df.iterrows():
+            start = time.perf_counter()
             path = row['path_png']
             try:
                 img = io.imread(path, as_gray=True)
                 feats = self.block_sampling_limited_features(img, num_blocks_h, num_blocks_w)
             except:
                 feats = np.zeros(num_blocks_h * num_blocks_w, dtype=np.float32)
+            end = time.perf_counter()
+            times.append(end - start)
             feature_list.append(feats)
         feature_array = np.array(feature_list)
         columns = [f"feat_block_{i}" for i in range(num_blocks_h * num_blocks_w)]
@@ -416,6 +430,7 @@ class FeatureExtractor:
         existing_numeric_cols = [c for c in numeric_cols if c in df.columns]
         new_df = pd.concat([df[existing_numeric_cols].reset_index(drop=True),
                             features_df.reset_index(drop=True)], axis=1)
+        new_df["time_extraction_sec"] = times
         if 'ganador_encoded' in df.columns:
             new_df['ganador_encoded'] = df['ganador_encoded'].values
         return new_df
@@ -468,8 +483,13 @@ class FeatureExtractor:
 
     def process_dataframe(self, df, feature_extraction_func):
         feature_list = []
+        times = []
         for _, row in tqdm(df.iterrows(), total=df.shape[0]):
+            start = time.perf_counter()
             features = feature_extraction_func(row['path_png'])
+            end = time.perf_counter()
+            times.append(end - start)
             feature_list.append(features)
         features_df = pd.DataFrame(feature_list, columns=[f'feature_{i}' for i in range(1, 21)])
+        features_df['time_extraction_sec'] = times
         return pd.concat([df.reset_index(drop=True), features_df], axis=1)
