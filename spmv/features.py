@@ -195,17 +195,17 @@ class FeatureExtractor:
         model_pretrained.eval()
         return model_pretrained
 
-    def extract_features_to_df(self, df, model, transform_size=224, device=torch.device("cpu"), prefix="feat"):
+    def extract_features_to_df(self, df, model, transform_size=224, prefix="feat"):
         transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         model.eval()
-        model.to(device)
+        model.to(self.config.device)
         df_out = df.copy()
         all_features = []
         times = []
         for _, row in tqdm(df_out.iterrows(), total=len(df_out)):
             img = Image.open(row["path_png"]).convert("RGB")
             start = time.perf_counter()
-            img_tensor = transform(img).unsqueeze(0).to(device)
+            img_tensor = transform(img).unsqueeze(0).to(self.config.device)
             with torch.no_grad():
                 features = model(img_tensor)
             features = features.squeeze().cpu().numpy()
@@ -218,17 +218,17 @@ class FeatureExtractor:
         df_out["time_extraction_sec"] = times
         return df_out
 
-    def extract_features_with_svd(self, df, model, transform_size=224, device=torch.device("cpu"), svd_components=10, prefix="svd_feat"):
+    def extract_features_with_svd(self, df, model, transform_size=224, svd_components=10, prefix="svd_feat"):
         transform = transforms.Compose([transforms.Resize((transform_size, transform_size)), transforms.ToTensor()])
         model.eval()
-        model.to(device)
+        model.to(self.config.device)
         df_out = df.copy()
         all_features = []
         times = []
         for _, row in tqdm(df_out.iterrows(), total=len(df_out)):
             img = Image.open(row["path_png"]).convert("RGB")
             start = time.perf_counter()
-            img_tensor = transform(img).unsqueeze(0).to(device)
+            img_tensor = transform(img).unsqueeze(0).to(self.config.device)
             with torch.no_grad():
                 features = model(img_tensor)
             end = time.perf_counter()
