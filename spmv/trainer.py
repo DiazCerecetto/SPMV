@@ -1,3 +1,4 @@
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
@@ -163,3 +164,66 @@ class Trainer:
             **hyp
         )
         return model
+    
+
+    def evaluate_all_scenarios_random_forest(all_scenarios, param_grid, train_and_evaluate_model, ver_matriz_confusion, config):
+        all_results = {}
+        modelos = {
+            'randomforest': Pipeline([
+                ('randomforest', RandomForestClassifier(random_state=config.SEED))
+            ])
+        }
+        for scenario_name, data_dict in all_scenarios.items():
+            print(f"\n=== Entrenando en el escenario: {scenario_name} ===")
+            X_train = data_dict["X_train"]
+            y_train = data_dict["y_train"]
+            X_val   = data_dict["X_val"]
+            y_val   = data_dict["y_val"]
+
+            evaluation_results = {}
+            f1_scores = []
+
+            best_model, results, conf_matrix = train_and_evaluate_model(
+                "randomforest",
+                modelos['randomforest'],
+                param_grid,
+                X_train,
+                y_train,
+                X_val,
+                y_val
+            )
+            evaluation_results['randomforest'] = {
+                'best_model': best_model,
+                'evaluation_results': results,
+                'confusion_matrix': conf_matrix
+            }
+            f1_scores.append({
+                'Model': 'RandomForest',
+                'F1-Score (Weighted)': results['weighted avg']['f1-score'],
+                'F1-Score (Macro)': results['macro avg']['f1-score']
+            })
+
+            all_results[scenario_name] = {
+                "evaluation_results": evaluation_results,
+                "f1_scores": pd.DataFrame(f1_scores)
+            }
+
+            print("\nResultados en escenario:", scenario_name)
+            print("Best Parameters:", best_model.get_params())
+            print("Evaluation Results (Classification Report):")
+            print(pd.DataFrame(results).T)
+            print("Confusion Matrix:")
+            ver_matriz_confusion("randomforest", conf_matrix)
+            print("Tabla de F1-Scores:")
+            print(all_results[scenario_name]["f1_scores"])
+            print("="*50)
+            
+        print("\n\n")
+        print("| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |")
+        print("|----------|-------|----------------------|-------------------|")
+        for scenario_name, results in all_results.items():
+            for _, row in results["f1_scores"].iterrows():
+                print(f"| {scenario_name} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |")
+        print("\n\n")
+        
+        return all_results
