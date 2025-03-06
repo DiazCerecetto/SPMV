@@ -374,7 +374,10 @@ class FeatureExtractor:
             self._plot_svd_2d(df_plot)
         else:
             self._plot_svd_3d(df_plot)
-        return df_plot
+        for i in range(reduced_features.shape[1]):
+            data[f"vit_feat_{i}"] = reduced_features[:, i]
+        return data 
+        
 
     def test_vit(self, data, num_images_per_class=20, dimension=3):
         processor_vit = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
