@@ -20,28 +20,47 @@ class Trainer:
         self.config = config
     
     def train_and_evaluate_model(self, model_name, model, param_grid, X_train, y_train, X_val, y_val):
+        numeric_features = X_train.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_features = X_train.select_dtypes(exclude=[np.number]).columns.tolist()
+        
+        preprocessor = ColumnTransformer([
+            ('num', StandardScaler(), numeric_features),
+            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+        ])
+        
         pipeline = Pipeline([
-            ('scaler', StandardScaler()),
+            ('preprocessor', preprocessor),
             (model_name.lower(), model)
         ])
-
+        
+        def prefix_param_grid(param_grid, prefix):
+            new_param_grid = {}
+            for key, value in param_grid.items():
+                if '__' not in key:
+                    new_key = f"{prefix}__{key}"
+                else:
+                    new_key = key
+                new_param_grid[new_key] = value
+            return new_param_grid
+        
+        prefixed_param_grid = prefix_param_grid(param_grid, model_name.lower())
+        
         min_class_samples = np.min(np.bincount(y_train))
         cv_folds = min(min_class_samples, 5)
         stratified_kfold = StratifiedKFold(n_splits=cv_folds)
-
+        
         grid_search = GridSearchCV(
             pipeline,
-            param_grid,
+            param_grid=prefixed_param_grid,
             cv=stratified_kfold,
             scoring='accuracy'
         )
         grid_search.fit(X_train, y_train)
         best_model = grid_search.best_estimator_
         y_pred_val = best_model.predict(X_val)
-
+        
         evaluation_results = classification_report(y_val, y_pred_val, output_dict=True)
-        conf_matrix = pd.crosstab(y_val, y_pred_val, 
-                                  rownames=['Actual'], colnames=['Predicted'])
+        conf_matrix = pd.crosstab(y_val, y_pred_val, rownames=['Actual'], colnames=['Predicted'])
         return best_model, evaluation_results, conf_matrix
 
     def ver_matriz_confusion(self, model_name, conf_matrix):
@@ -88,7 +107,6 @@ class Trainer:
             })
 
         return evaluation_results, f1_scores
-
 
     def _get_val_images_and_labels(self, val_folder):
         paths, labels = [], []
@@ -166,43 +184,6 @@ class Trainer:
         )
         return model
     
-
-    def train_and_evaluate_model(self, model_name, model, param_grid, X_train, y_train, X_val, y_val):
-        numeric_features = X_train.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_features = X_train.select_dtypes(exclude=[np.number]).columns.tolist()
-        preprocessor = ColumnTransformer([
-            ('num', StandardScaler(), numeric_features),
-            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
-        ])
-        pipeline = Pipeline([
-            ('preprocessor', preprocessor),
-            (model_name.lower(), model)  
-        ])
-
-        min_class_samples = np.min(np.bincount(y_train))
-        cv_folds = min(min_class_samples, 5)
-        stratified_kfold = StratifiedKFold(n_splits=cv_folds)
-
-
-        grid_search = GridSearchCV(
-            pipeline,
-            param_grid=param_grid,
-            cv=stratified_kfold,
-            scoring='accuracy'
-        )
-
-        grid_search.fit(X_train, y_train)
-        best_model = grid_search.best_estimator_
-
-        y_pred_val = best_model.predict(X_val)
-
-        evaluation_results = classification_report(y_val, y_pred_val, output_dict=True)
-        conf_matrix = pd.crosstab(y_val, y_pred_val,
-                                rownames=['Actual'], colnames=['Predicted'])
-
-        return best_model, evaluation_results, conf_matrix
-
-
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
         all_results = {}
         model = RandomForestClassifier(random_state=123) 
@@ -261,4 +242,3 @@ class Trainer:
         print("\n\n")
 
         return all_results
-
