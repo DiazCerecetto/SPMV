@@ -1,18 +1,19 @@
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sklearn.metrics import classification_report
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from ultralytics import YOLO #type: ignore
-from sklearn.metrics import f1_score
-import numpy as np
-import pandas as pd
 import os
 import glob
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, f1_score
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+from ultralytics import YOLO  # type: ignore
 
 class Trainer:
     def __init__(self, config):
@@ -166,13 +167,46 @@ class Trainer:
         return model
     
 
+    def train_and_evaluate_model(self, model_name, model, param_grid, X_train, y_train, X_val, y_val):
+        numeric_features = X_train.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_features = X_train.select_dtypes(exclude=[np.number]).columns.tolist()
+        preprocessor = ColumnTransformer([
+            ('num', StandardScaler(), numeric_features),
+            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+        ])
+        pipeline = Pipeline([
+            ('preprocessor', preprocessor),
+            (model_name.lower(), model)  
+        ])
+
+        min_class_samples = np.min(np.bincount(y_train))
+        cv_folds = min(min_class_samples, 5)
+        stratified_kfold = StratifiedKFold(n_splits=cv_folds)
+
+
+        grid_search = GridSearchCV(
+            pipeline,
+            param_grid=param_grid,
+            cv=stratified_kfold,
+            scoring='accuracy'
+        )
+
+        grid_search.fit(X_train, y_train)
+        best_model = grid_search.best_estimator_
+
+        y_pred_val = best_model.predict(X_val)
+
+        evaluation_results = classification_report(y_val, y_pred_val, output_dict=True)
+        conf_matrix = pd.crosstab(y_val, y_pred_val,
+                                rownames=['Actual'], colnames=['Predicted'])
+
+        return best_model, evaluation_results, conf_matrix
+
+
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
         all_results = {}
-        modelos = {
-            'randomforest': Pipeline([
-                ('randomforest', RandomForestClassifier(random_state=self.config.SEED))
-            ])
-        }
+        model = RandomForestClassifier(random_state=123) 
+
         for scenario_name, data_dict in all_scenarios.items():
             print(f"\n=== Entrenando en el escenario: {scenario_name} ===")
             X_train = data_dict["X_train"]
@@ -180,23 +214,23 @@ class Trainer:
             X_val   = data_dict["X_val"]
             y_val   = data_dict["y_val"]
 
-            evaluation_results = {}
             f1_scores = []
 
             best_model, results, conf_matrix = self.train_and_evaluate_model(
                 "randomforest",
-                modelos['randomforest'],
+                model,
                 param_grid,
                 X_train,
                 y_train,
                 X_val,
                 y_val
             )
-            evaluation_results['randomforest'] = {
+            evaluation_results = {
                 'best_model': best_model,
                 'evaluation_results': results,
                 'confusion_matrix': conf_matrix
             }
+
             f1_scores.append({
                 'Model': 'RandomForest',
                 'F1-Score (Weighted)': results['weighted avg']['f1-score'],
@@ -210,20 +244,21 @@ class Trainer:
 
             print("\nResultados en escenario:", scenario_name)
             print("Best Parameters:", best_model.get_params())
-            print("Evaluation Results (Classification Report):")
+            print("\nEvaluation Results (Classification Report):")
             print(pd.DataFrame(results).T)
-            print("Confusion Matrix:")
+            print("\nConfusion Matrix:")
+
             self.ver_matriz_confusion("randomforest", conf_matrix)
-            print("Tabla de F1-Scores:")
+            print("\nTabla de F1-Scores:")
             print(all_results[scenario_name]["f1_scores"])
             print("="*50)
-            
-        print("\n\n")
-        print("| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |")
+
+        print("\n\n| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |")
         print("|----------|-------|----------------------|-------------------|")
         for scenario_name, results in all_results.items():
             for _, row in results["f1_scores"].iterrows():
                 print(f"| {scenario_name} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |")
         print("\n\n")
-        
+
         return all_results
+
