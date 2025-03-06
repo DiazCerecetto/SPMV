@@ -1,3 +1,4 @@
+import itertools
 import os
 import glob
 
@@ -12,6 +13,7 @@ from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from itertools import combinations
 
 from ultralytics import YOLO  # type: ignore
 
@@ -186,7 +188,7 @@ class Trainer:
     
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
         all_results = {}
-        model = RandomForestClassifier(random_state=123) 
+        model = RandomForestClassifier(random_state=self.config.seed) 
 
         for scenario_name, data_dict in all_scenarios.items():
             print(f"\n=== Entrenando en el escenario: {scenario_name} ===")
@@ -242,3 +244,32 @@ class Trainer:
         print("\n\n")
 
         return all_results
+    
+    def create_all_scenarios(self, all_scenarios, feature_names_list):
+        new_scenarios = {}
+        for combo in itertools.combinations_with_replacement(feature_names_list, 2):
+            combo_key = "_".join(combo)
+            if all(feat in all_scenarios for feat in combo):
+                if combo[0] == combo[1]:
+                    X_train_combined = pd.concat([
+                        all_scenarios[combo[0]]["X_train"].add_prefix(f"{combo[0]}_1_"),
+                        all_scenarios[combo[1]]["X_train"].add_prefix(f"{combo[1]}_2_")
+                    ], axis=1)
+                    X_val_combined = pd.concat([
+                        all_scenarios[combo[0]]["X_val"].add_prefix(f"{combo[0]}_1_"),
+                        all_scenarios[combo[1]]["X_val"].add_prefix(f"{combo[1]}_2_")
+                    ], axis=1)
+                else:
+                    X_train_combined = pd.concat([
+                        all_scenarios[feat]["X_train"].add_prefix(f"{feat}_") for feat in combo
+                    ], axis=1)
+                    X_val_combined = pd.concat([
+                        all_scenarios[feat]["X_val"].add_prefix(f"{feat}_") for feat in combo
+                    ], axis=1)
+                new_scenarios[combo_key] = {
+                    "X_train": X_train_combined,
+                    "y_train": all_scenarios[combo[0]]["y_train"],
+                    "X_val": X_val_combined,
+                    "y_val": all_scenarios[combo[0]]["y_val"]
+                }
+        return new_scenarios
