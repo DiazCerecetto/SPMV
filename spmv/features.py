@@ -351,33 +351,50 @@ class FeatureExtractor:
     ):
         if device is None:
             device = self.config.device
+
         model.eval()
         model.to(device)
+
         all_features = []
         all_labels = []
+        all_indices = []  
         unique_classes = data['ganador'].unique()
+
         with torch.no_grad():
             for class_label in unique_classes:
                 class_data = data[data['ganador'] == class_label].head(num_images_per_class)
-                for _, row in class_data.iterrows():
+
+                for idx, row in class_data.iterrows():
                     img = Image.open(row['path_png']).convert("RGB")
                     inputs = processor(images=img, return_tensors="pt").to(device)
                     outputs = model(**inputs)
+
                     features = outputs.last_hidden_state.mean(dim=1).cpu().numpy().flatten()
                     all_features.append(features)
                     all_labels.append(class_label)
+                    all_indices.append(idx)
+
         all_features = np.array(all_features)
-        all_labels = np.array(all_labels)
+        all_labels   = np.array(all_labels)
         reduced_features = self._apply_svd(all_features, dimension)
+
         df_plot = self._create_plotly_df(reduced_features, all_labels, dimension)
+
         if dimension == 2:
             self._plot_svd_2d(df_plot)
         else:
             self._plot_svd_3d(df_plot)
-        for i in range(reduced_features.shape[1]):
-            data[f"vit_feat_{i}"] = reduced_features[:, i]
-        return data 
-        
+
+        df_features = pd.DataFrame(
+            reduced_features,
+            index=all_indices,
+            columns=[f"vit_feat_{i}" for i in range(dimension)]
+        )
+
+        data = data.join(df_features, how="left")
+
+        return data
+
 
     def test_vit(self, data, num_images_per_class=20, dimension=3):
         processor_vit = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
