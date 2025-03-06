@@ -188,7 +188,7 @@ class Trainer:
     
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
         all_results = {}
-        model = RandomForestClassifier(random_state=self.config.seed) 
+        model = RandomForestClassifier(random_state=self.config.SEED) 
 
         for scenario_name, data_dict in all_scenarios.items():
             print(f"\n=== Entrenando en el escenario: {scenario_name} ===")
