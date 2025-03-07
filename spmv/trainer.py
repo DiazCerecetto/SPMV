@@ -255,21 +255,22 @@ class Trainer:
 
     def create_all_scenarios(self, all_scenarios, feature_names_list, combination_size=2):
         new_scenarios = {}
-        for combo in itertools.combinations(feature_names_list, combination_size):
-            combo_key = "_".join(combo)
-            if all(feat in all_scenarios for feat in combo):
-                X_train_combined = pd.concat(
-                    [all_scenarios[feat]["X_train"].add_prefix(f"{feat}_") for feat in combo],
-                    axis=1
-                )
-                X_val_combined = pd.concat(
-                    [all_scenarios[feat]["X_val"].add_prefix(f"{feat}_") for feat in combo],
-                    axis=1
-                )
-                new_scenarios[combo_key] = {
-                    "X_train": X_train_combined,
-                    "y_train": all_scenarios[combo[0]]["y_train"],
-                    "X_val": X_val_combined,
-                    "y_val": all_scenarios[combo[0]]["y_val"]
-                }
+        for size in range(1, combination_size + 1):
+            for combo in itertools.combinations(feature_names_list, size):
+                combo_key = "_".join(combo)
+                if all(feat in all_scenarios for feat in combo):
+                    X_train_combined = pd.concat(
+                        [all_scenarios[feat]["X_train"].add_prefix(f"{feat}_") for feat in combo],
+                        axis=1
+                    )
+                    X_val_combined = pd.concat(
+                        [all_scenarios[feat]["X_val"].add_prefix(f"{feat}_") for feat in combo],
+                        axis=1
+                    )
+                    new_scenarios[combo_key] = {
+                        "X_train": X_train_combined,
+                        "y_train": all_scenarios[combo[0]]["y_train"],
+                        "X_val": X_val_combined,
+                        "y_val": all_scenarios[combo[0]]["y_val"]
+                    }
         return new_scenarios
