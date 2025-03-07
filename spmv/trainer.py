@@ -253,7 +253,8 @@ class Trainer:
     
         return all_results
 
-    def create_all_scenarios(self, all_scenarios, feature_names_list, combination_size=2):
+    def create_all_scenarios(self, all_scenarios, feature_names_list):
+        combination_size = len(feature_names_list)
         new_scenarios = {}
         for size in range(2, combination_size + 1):
             for combo in itertools.combinations(feature_names_list, size):
