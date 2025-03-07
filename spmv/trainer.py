@@ -244,10 +244,10 @@ class Trainer:
         print("\n\n")
 
         return all_results
-    
-    def create_all_scenarios(self,all_scenarios, feature_names_list):
+
+    def create_all_scenarios(self, all_scenarios, feature_names_list, combination_size=2):
         new_scenarios = {}
-        for combo in combinations(feature_names_list, 2):
+        for combo in itertools.combinations(feature_names_list, combination_size):
             combo_key = "_".join(combo)
             if all(feat in all_scenarios for feat in combo):
                 X_train_combined = pd.concat(
