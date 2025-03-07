@@ -186,7 +186,7 @@ class Trainer:
         return model
     
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, print_parameters=True,
-                                             print_report=True, display_confusion_matrix=True):
+                                             print_report=True, display_confusion_matrix=True, n=4):
         all_results = {}
         model = RandomForestClassifier(random_state=self.config.SEED) 
 
@@ -242,16 +242,27 @@ class Trainer:
 
             display(Markdown("-" * 50))
     
-        # Tabla resumen de F1-scores por escenario
-        display(Markdown("## Resumen de F1-Scores por escenario"))
-        table_md = "| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |\n"
-        table_md += "|----------|-------|----------------------|-------------------|\n"
+        display(Markdown("## Resumen de F1-Scores por escenario (ordenado por F1-Score (Macro))"))
+        all_rows = []
         for scenario_name, results in all_results.items():
             for _, row in results["f1_scores"].iterrows():
-                table_md += f"| {scenario_name} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |\n"
+                all_rows.append({
+                    "Scenario": scenario_name,
+                    "Model": row['Model'],
+                    "F1-Score (Weighted)": row['F1-Score (Weighted)'],
+                    "F1-Score (Macro)": row['F1-Score (Macro)']
+                })
+
+        all_rows_sorted = sorted(all_rows, key=lambda x: x["F1-Score (Macro)"], reverse=True)
+        table_md = "| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |\n"
+        table_md += "|----------|-------|----------------------|-------------------|\n"
+        for row in all_rows_sorted:
+            table_md += f"| {row['Scenario']} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |\n"
+
         display(Markdown(table_md))
-    
-        return all_results
+        
+        topN_scenarios = [row['Scenario'] for row in all_rows_sorted[:n]]
+        return all_results, topN_scenarios
 
     def create_all_scenarios(self, all_scenarios, feature_names_list):
         combination_size = len(feature_names_list)
