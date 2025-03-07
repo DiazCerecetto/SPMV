@@ -1,10 +1,10 @@
 import itertools
 import os
 import glob
-
+from IPython.display import display, Markdown
+import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
 from sklearn.compose import ColumnTransformer
@@ -74,15 +74,27 @@ class Trainer:
         plt.show()
 
     def print_results(self, evaluation_results):
+        confusion_data = []
+
         for model_name, results in evaluation_results.items():
-            print(f"Model: {model_name}")
-            print("Best Parameters:", results['best_model'].get_params())
-            print("Evaluation Results:")
-            print(pd.DataFrame(results['evaluation_results']).T)
-            print("Confusion Matrix:")
-            self.ver_matriz_confusion(model_name, results['confusion_matrix'])
+            display(Markdown(f"## Modelo: **{model_name}**"))
+            
+            best_params = results['best_model'].get_params()
+            display(Markdown("### Mejores Parámetros:"))
+            display(Markdown(f"```python\n{best_params}\n```"))
+            
+            display(Markdown("### Resultados de Evaluación:"))
+            df_eval = pd.DataFrame(results['evaluation_results']).T
+            display(Markdown(df_eval.to_markdown()))
+            
+            confusion_data.append((model_name, results['confusion_matrix']))
+
+        for model_name, conf_matrix in confusion_data:
+            display(Markdown(f"### Matriz de Confusión para {model_name}:"))
+            self.ver_matriz_confusion(model_name, conf_matrix)
 
     def train_evaluate_models(self, X_train, y_train, X_val, y_val, models=None, param_grid=None):
+        from IPython.display import display, Markdown
         if models is None:
             models = self.config.MODELS
         if param_grid is None:
@@ -92,7 +104,7 @@ class Trainer:
         f1_scores = []
 
         for model_name, model in models.items():
-            print(f"Entrenando y evaluando el modelo {model_name}")
+            display(Markdown(f"### Entrenando y evaluando el modelo **{model_name}**"))
             best_model, results, conf_matrix = self.train_and_evaluate_model(
                 model_name, model, param_grid[model_name],
                 X_train, y_train, X_val, y_val
@@ -108,6 +120,10 @@ class Trainer:
                 'F1-Score (Macro)': results['macro avg']['f1-score']
             })
 
+        display(Markdown("### F1 Scores"))
+        df_f1 = pd.DataFrame(f1_scores)
+        display(Markdown(df_f1.to_markdown()))
+        
         return evaluation_results, f1_scores
 
     def _get_val_images_and_labels(self, val_folder):
@@ -191,7 +207,7 @@ class Trainer:
         model = RandomForestClassifier(random_state=self.config.SEED) 
 
         for scenario_name, data_dict in all_scenarios.items():
-            print(f"\n=== Entrenando en el escenario: {scenario_name} ===")
+            display(Markdown(f"## Entrenando en el escenario: **{scenario_name}**"))
             X_train = data_dict["X_train"]
             y_train = data_dict["y_train"]
             X_val   = data_dict["X_val"]
@@ -225,24 +241,31 @@ class Trainer:
                 "f1_scores": pd.DataFrame(f1_scores)
             }
 
-            print("\nResultados en escenario:", scenario_name)
-            print("Best Parameters:", best_model.get_params())
-            print("\nEvaluation Results (Classification Report):")
-            print(pd.DataFrame(results).T)
-            print("\nConfusion Matrix:")
+            display(Markdown(f"### Resultados en escenario: **{scenario_name}**"))
+            display(Markdown("#### Best Parameters:"))
+            display(Markdown(f"```python\n{best_model.get_params()}\n```"))
 
+            display(Markdown("#### Evaluation Results (Classification Report):"))
+            df_results = pd.DataFrame(results).T
+            display(Markdown(df_results.to_markdown()))
+
+            display(Markdown("#### Confusion Matrix:"))
             self.ver_matriz_confusion("randomforest", conf_matrix)
-            print("\nTabla de F1-Scores:")
-            print(all_results[scenario_name]["f1_scores"])
-            print("="*50)
 
-        print("\n\n| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |")
-        print("|----------|-------|----------------------|-------------------|")
+            display(Markdown("#### Tabla de F1-Scores:"))
+            display(Markdown(all_results[scenario_name]["f1_scores"].to_markdown()))
+
+            display(Markdown("-" * 50))
+    
+        # Tabla resumen de F1-scores por escenario
+        display(Markdown("## Resumen de F1-Scores por escenario"))
+        table_md = "| Scenario | Model | F1-Score (Weighted) | F1-Score (Macro) |\n"
+        table_md += "|----------|-------|----------------------|-------------------|\n"
         for scenario_name, results in all_results.items():
             for _, row in results["f1_scores"].iterrows():
-                print(f"| {scenario_name} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |")
-        print("\n\n")
-
+                table_md += f"| {scenario_name} | {row['Model']} | {row['F1-Score (Weighted)']} | {row['F1-Score (Macro)']} |\n"
+        display(Markdown(table_md))
+    
         return all_results
 
     def create_all_scenarios(self, all_scenarios, feature_names_list, combination_size=2):
