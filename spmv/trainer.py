@@ -187,6 +187,8 @@ class Trainer:
             project=self.config.RUNS_FOLDER,
             name='best_tune',
         )
+        hyperparameters = model.hyp
+        return hyperparameters
         
     def train_best_model(self, model_name, dataset_path, epochs=25, hyp=None, imgsz=224):
         model = YOLO(model_name)
