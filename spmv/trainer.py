@@ -170,25 +170,6 @@ class Trainer:
                 best_macro_f1 = macro_f1
                 best_model = mp
         return best_model
-
-    def tune_best_yolo(self, model_path, dataset_path, epochs=10, iterations=30, imgsz=224):
-        model = YOLO(model_path)
-        model.tune(
-            data=dataset_path,
-            epochs=epochs,
-            iterations=iterations,
-            imgsz=imgsz,
-            device='cuda',
-            optimizer="AdamW",
-            plots=True,
-            save=True,
-            val=True,
-            augment=False,
-            project=self.config.RUNS_FOLDER,
-            name='best_tune',
-        )
-        hyperparameters = model.hyp
-        return hyperparameters
         
     def train_best_model(self, model_name, dataset_path, epochs=25, hyp=None, imgsz=224):
         model = YOLO(model_name)
@@ -204,7 +185,8 @@ class Trainer:
         )
         return model
     
-    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid):
+    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, print_parameters=True,
+                                             print_report=True, display_confusion_matrix=True):
         all_results = {}
         model = RandomForestClassifier(random_state=self.config.SEED) 
 
@@ -244,15 +226,16 @@ class Trainer:
             }
 
             display(Markdown(f"### Resultados en escenario: **{scenario_name}**"))
-            display(Markdown("#### Best Parameters:"))
-            display(Markdown(f"```python\n{best_model.get_params()}\n```"))
-
-            display(Markdown("#### Evaluation Results (Classification Report):"))
-            df_results = pd.DataFrame(results).T
-            display(Markdown(df_results.to_markdown()))
-
-            display(Markdown("#### Confusion Matrix:"))
-            self.ver_matriz_confusion("randomforest", conf_matrix)
+            if print_parameters:
+                display(Markdown("#### Best Parameters:"))
+                display(Markdown(f"```python\n{best_model.get_params()}\n```"))
+            if print_report:
+                display(Markdown("#### Evaluation Results (Classification Report):"))
+                df_results = pd.DataFrame(results).T
+                display(Markdown(df_results.to_markdown()))
+            if display_confusion_matrix:
+                display(Markdown("#### Confusion Matrix:"))
+                self.ver_matriz_confusion("randomforest", conf_matrix)
 
             display(Markdown("#### Tabla de F1-Scores:"))
             display(Markdown(all_results[scenario_name]["f1_scores"].to_markdown()))
