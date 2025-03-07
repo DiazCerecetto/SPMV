@@ -255,7 +255,7 @@ class Trainer:
 
     def create_all_scenarios(self, all_scenarios, feature_names_list, combination_size=2):
         new_scenarios = {}
-        for size in range(1, combination_size + 1):
+        for size in range(2, combination_size + 1):
             for combo in itertools.combinations(feature_names_list, size):
                 combo_key = "_".join(combo)
                 if all(feat in all_scenarios for feat in combo):
