@@ -614,14 +614,18 @@ class FeatureExtractor:
             json.dump(data_to_save, f, indent=2)
         print(f"Hiperparámetros y resultados guardados en: {filepath}\nMejor escenario global: {best_scenario_name} (F1-Macro: {best_macro_f1:.4f})")
 
+
     def save_topn(self, topn: list, filepath: str = "topn.json"):
         filepath = os.path.join(self.config.RESULTS_DIR, filepath)
         with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(topn, f, indent=2)
+            json.dump(topn, f, indent=4)
 
-    def load_topn(self,filepath: str = "topn.json") -> list:
+    def load_topn(self, filepath: str = "topn.json") -> list:
+        filepath = os.path.join(self.config.RESULTS_DIR, filepath)
         if not os.path.exists(filepath):
-            return []
+            return []  # Devuelve una lista vacía si el archivo no existe.
+        
         with open(filepath, "r", encoding="utf-8") as f:
             topn = json.load(f)
+        
         return topn
