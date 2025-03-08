@@ -268,6 +268,8 @@ class Trainer:
     def create_all_scenarios(self, all_scenarios, feature_names_list=None):
         if feature_names_list is None:
             feature_names_list = list(all_scenarios.keys())
+        feature_names_list = sorted(feature_names_list)
+
         combination_size = len(feature_names_list)
         new_scenarios = {}
         for size in range(2, combination_size + 1):
