@@ -187,7 +187,8 @@ class Trainer:
         return model
     
     def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, print_parameters=True,
-                                             print_report=True, display_confusion_matrix=True, n=4):
+                                             print_report=True, display_confusion_matrix=True,
+                                             print_f1scores = False, n=4):
         all_results = {}
         model = RandomForestClassifier(random_state=self.config.SEED) 
 
@@ -237,11 +238,11 @@ class Trainer:
             if display_confusion_matrix:
                 display(Markdown("#### Confusion Matrix:"))
                 self.ver_matriz_confusion("randomforest", conf_matrix)
-
-            display(Markdown("#### Tabla de F1-Scores:"))
-            display(Markdown(all_results[scenario_name]["f1_scores"].to_markdown()))
-
-            display(Markdown("-" * 50))
+            if print_f1scores:
+                display(Markdown("#### F1-Scores:"))
+                display(Markdown(all_results[scenario_name]["f1_scores"].to_markdown()))
+            
+                display(Markdown("-" * 50))
     
         display(Markdown("## Resumen de F1-Scores por escenario (ordenado por F1-Score (Macro))"))
         all_rows = []
