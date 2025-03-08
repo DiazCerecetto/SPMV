@@ -14,7 +14,7 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from itertools import combinations
-from ultralytics import YOLO
+from ultralytics import YOLO #type: ignore
 
 class Trainer:
     def __init__(self, config):
