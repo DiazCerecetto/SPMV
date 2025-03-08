@@ -341,8 +341,56 @@ class Trainer:
         return np.array(ensemble_predictions)
 
     def evaluate_ensemble(self, y_true, y_pred):
-        macro_f1 = f1_score(y_true, y_pred, average='macro')
-        weighted_f1 = f1_score(y_true, y_pred, average='weighted')
-        cm = confusion_matrix(y_true, y_pred)
-        cls_report = classification_report(y_true, y_pred)
-        return macro_f1, weighted_f1, cm, cls_report
+            macro_f1 = f1_score(y_true, y_pred, average='macro')
+            weighted_f1 = f1_score(y_true, y_pred, average='weighted')
+            cm = confusion_matrix(y_true, y_pred)
+            cls_report = classification_report(y_true, y_pred)
+            return macro_f1, weighted_f1, cm, cls_report
+
+    def find_scenario_key(self, topn, all_scenarios):
+        for key in all_scenarios.keys():
+            if all(token in key for token in topn):
+                return key
+            return None
+    def evaluate_scenarios_test(self, loaded_results, all_scenarios, config, model_trainer):
+        test_results = {}
+        for scenario_name, scenario_data in loaded_results.items():
+            if scenario_name not in all_scenarios:
+                continue
+            
+            best_params = scenario_data["best_params"]
+            filtered_params = {k: v for k, v in best_params.items() if k.startswith("randomforest__")}
+            
+            X_train_test = all_scenarios[scenario_name]["X_train"]
+            y_train_test = all_scenarios[scenario_name]["y_train"]
+            X_eval_test  = all_scenarios[scenario_name]["X_val"]
+            y_eval_test  = all_scenarios[scenario_name]["y_val"]
+            
+            numeric_features = X_train_test.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_features = X_train_test.select_dtypes(exclude=[np.number]).columns.tolist()
+            
+            preprocessor = ColumnTransformer([
+                ('num', StandardScaler(), numeric_features),
+                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+            ])
+            
+            model_rf = RandomForestClassifier(random_state=config.SEED)
+            pipeline_test = Pipeline([
+                ('preprocessor', preprocessor),
+                ('randomforest', model_rf)
+            ])
+            
+            pipeline_test.set_params(**filtered_params)
+            pipeline_test.fit(X_train_test, y_train_test)
+            y_pred_test = pipeline_test.predict(X_eval_test)
+            
+            cr = classification_report(y_eval_test, y_pred_test, output_dict=True)
+            cm = confusion_matrix(y_eval_test, y_pred_test)
+            test_results[scenario_name] = {"report": cr, "confusion": cm}
+            
+            print(f"\n=== Test results for '{scenario_name}' ===")
+            print(classification_report(y_eval_test, y_pred_test))
+            print("Matriz de confusión:\n", cm)
+            model_trainer.ver_matriz_confusion(scenario_name, pd.DataFrame(cm))
+        
+        return test_results
