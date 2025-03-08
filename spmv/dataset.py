@@ -1,3 +1,4 @@
+import json
 from spmv.config import Config
 import os
 import pandas as pd
@@ -211,3 +212,80 @@ class DatasetManager:
         copy_images_for_split(data_train, 'train')
         copy_images_for_split(data_val,   'val')
         copy_images_for_split(data_test,  'test')
+    
+    def load_val_results(self, filepath="val_results.json"):
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        loaded_results = data.get("results", {})
+        loaded_results_multi = data.get("results_multi", {})
+        print(f"Datos cargados desde: {filepath}")
+        return loaded_results, loaded_results_multi
+        
+    def save_val_results(self, results, results_multi, filepath="val_results.json"):
+        import json
+        data_to_save = {}
+        
+        for scenario_name, scenario_dict in results.items():
+            best_model = scenario_dict["evaluation_results"]["best_model"]
+            best_params = best_model.get_params() if best_model else {}
+            
+            eval_dict = scenario_dict["evaluation_results"]["evaluation_results"]
+            confusion = scenario_dict["evaluation_results"]["confusion_matrix"]
+            f1_df = scenario_dict["f1_scores"]
+            
+            data_to_save.setdefault("results", {})
+            data_to_save["results"][scenario_name] = {
+                "best_params": best_params,
+                "metrics": eval_dict,
+                "confusion_matrix": (confusion.values.tolist() 
+                                    if hasattr(confusion, "values") else []),
+                "f1_scores": (f1_df.to_dict(orient='records') 
+                            if f1_df is not None else [])
+            }
+
+        for scenario_name, scenario_dict in results_multi.items():
+            best_model = scenario_dict["evaluation_results"]["best_model"]
+            best_params = best_model.get_params() if best_model else {}
+            
+            eval_dict = scenario_dict["evaluation_results"]["evaluation_results"]
+            confusion = scenario_dict["evaluation_results"]["confusion_matrix"]
+            f1_df = scenario_dict["f1_scores"]
+            
+            data_to_save.setdefault("results_multi", {})
+            data_to_save["results_multi"][scenario_name] = {
+                "best_params": best_params,
+                "metrics": eval_dict,
+                "confusion_matrix": (confusion.values.tolist() 
+                                    if hasattr(confusion, "values") else []),
+                "f1_scores": (f1_df.to_dict(orient='records') 
+                            if f1_df is not None else [])
+            }
+
+
+        best_scenario_name = None
+        best_macro_f1 = -1.0
+
+        for scenario_name, scenario_dict in results.items():
+
+            if scenario_dict["f1_scores"] is not None:
+                macro_value = scenario_dict["f1_scores"]["F1-Score (Macro)"].values[0]
+                if macro_value > best_macro_f1:
+                    best_macro_f1 = macro_value
+                    best_scenario_name = scenario_name
+
+        for scenario_name, scenario_dict in results_multi.items():
+            if scenario_dict["f1_scores"] is not None:
+                macro_value = scenario_dict["f1_scores"]["F1-Score (Macro)"].values[0]
+                if macro_value > best_macro_f1:
+                    best_macro_f1 = macro_value
+                    best_scenario_name = scenario_name
+
+        data_to_save["best_scenario"] = best_scenario_name
+        data_to_save["best_macro_f1"] = best_macro_f1
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data_to_save, f, indent=2)
+        print(f"Hiperparámetros y resultados guardados en: {filepath}\n"
+            f"Mejor escenario global: {best_scenario_name} (F1-Macro: {best_macro_f1:.4f})")

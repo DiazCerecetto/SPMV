@@ -41,6 +41,7 @@ class Config:
         dataset_yolo="matrices_yolo",
         runs_folder_yolo="runs_yolo",
         processed_data_dir="processed_data",
+        ensamble_dir="ensamble",
         models=None,
         param_grid=None,
     ):
@@ -64,7 +65,7 @@ class Config:
         self.DATASET_YOLO = os.path.join(self.BASE_PATH, dataset_yolo)
         self.RUNS_FOLDER = os.path.join(self.BASE_PATH, runs_folder_yolo)
         self.PROCESSED_DATA_DIR = os.path.join(self.BASE_PATH, processed_data_dir)
-
+        self.PATH_ENSAMBLE = os.path.join(self.BASE_PATH, ensamble_dir) 
         os.makedirs(self.RUNS_FOLDER, exist_ok=True)
         os.makedirs(self.MATRIX_RAW_DIR, exist_ok=True)
         os.makedirs(self.PATH_CARPETA_MATRICES_PNG, exist_ok=True)

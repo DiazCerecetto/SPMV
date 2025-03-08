@@ -2,6 +2,7 @@ import itertools
 import os
 import glob
 from IPython.display import display, Markdown
+import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +10,7 @@ import seaborn as sns
 
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -286,3 +287,42 @@ class Trainer:
                         "y_val": all_scenarios[combo[0]]["y_val"]
                     }
         return new_scenarios
+
+    def save_ensemble_models(self, best_model, normal_model, best_filename='best_model.pkl', normal_filename='normal_model.pkl'):
+        os.makedirs(self.config.PATH_ENSAMBLE, exist_ok=True)
+        best_path = os.path.join(self.config.PATH_ENSAMBLE, best_filename)
+        normal_path = os.path.join(self.config.PATH_ENSAMBLE, normal_filename)
+        import joblib
+        joblib.dump(best_model, best_path)
+        joblib.dump(normal_model, normal_path)
+        print(f"Modelos guardados en:\n{best_path}\n{normal_path}")
+
+    def load_ensemble_models(self, best_filename='best_model.pkl', normal_filename='normal_model.pkl'):
+        best_path = os.path.join(self.config.PATH_ENSAMBLE, best_filename)
+        normal_path = os.path.join(self.config.PATH_ENSAMBLE, normal_filename)
+        import joblib
+        best_model = joblib.load(best_path)
+        normal_model = joblib.load(normal_path)
+        print(f"Modelos cargados desde:\n{best_path}\n{normal_path}")
+        return best_model, normal_model
+
+    def save_ensemble_datasets(self, X, y, X_filename='X_ensemble.csv', y_filename='y_ensemble.csv'):
+        os.makedirs(self.config.PATH_ENSAMBLE, exist_ok=True)
+        X_path = os.path.join(self.config.PATH_ENSAMBLE, X_filename)
+        y_path = os.path.join(self.config.PATH_ENSAMBLE, y_filename)
+        X.to_csv(X_path, index=False)
+        if isinstance(y, pd.Series) or isinstance(y, pd.DataFrame):
+            y.to_csv(y_path, index=False)
+        else:
+            pd.DataFrame(y).to_csv(y_path, index=False)
+        print(f"Datasets de ensemble guardados en:\n{X_path}\n{y_path}")
+
+    def load_ensemble_datasets(self, X_filename='X_ensemble.csv', y_filename='y_ensemble.csv'):
+        X_path = os.path.join(self.config.PATH_ENSAMBLE, X_filename)
+        y_path = os.path.join(self.config.PATH_ENSAMBLE, y_filename)
+        X = pd.read_csv(X_path)
+        y = pd.read_csv(y_path)
+        if y.shape[1] == 1:
+            y = y.iloc[:, 0]
+        print(f"Datasets de ensemble cargados desde:\n{X_path}\n{y_path}")
+        return X, y
