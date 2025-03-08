@@ -186,14 +186,11 @@ class Trainer:
         )
         return model
     
-    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, print_parameters=True,
-                                             print_report=True, display_confusion_matrix=True,
-                                             print_f1scores = False, n=4):
+    def evaluate_all_scenarios_random_forest(self, all_scenarios, param_grid, n=4):
         all_results = {}
         model = RandomForestClassifier(random_state=self.config.SEED) 
 
         for scenario_name, data_dict in all_scenarios.items():
-            display(Markdown(f"## Entrenando en el escenario: **{scenario_name}**"))
             X_train = data_dict["X_train"]
             y_train = data_dict["y_train"]
             X_val   = data_dict["X_val"]
@@ -227,23 +224,7 @@ class Trainer:
                 "f1_scores": pd.DataFrame(f1_scores)
             }
 
-            display(Markdown(f"### Resultados en escenario: **{scenario_name}**"))
-            if print_parameters:
-                display(Markdown("#### Best Parameters:"))
-                display(Markdown(f"```python\n{best_model.get_params()}\n```"))
-            if print_report:
-                display(Markdown("#### Evaluation Results (Classification Report):"))
-                df_results = pd.DataFrame(results).T
-                display(Markdown(df_results.to_markdown()))
-            if display_confusion_matrix:
-                display(Markdown("#### Confusion Matrix:"))
-                self.ver_matriz_confusion("randomforest", conf_matrix)
-            if print_f1scores:
-                display(Markdown("#### F1-Scores:"))
-                display(Markdown(all_results[scenario_name]["f1_scores"].to_markdown()))
-            
-                display(Markdown("-" * 50))
-    
+
         display(Markdown("## Resumen de F1-Scores por escenario (ordenado por F1-Score (Macro))"))
         all_rows = []
         for scenario_name, results in all_results.items():
