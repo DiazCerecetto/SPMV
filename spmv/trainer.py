@@ -265,7 +265,9 @@ class Trainer:
         topN_scenarios = [row['Scenario'] for row in all_rows_sorted[:n]]
         return all_results, topN_scenarios
 
-    def create_all_scenarios(self, all_scenarios, feature_names_list):
+    def create_all_scenarios(self, all_scenarios, feature_names_list=None):
+        if feature_names_list is None:
+            feature_names_list = list(all_scenarios.keys())
         combination_size = len(feature_names_list)
         new_scenarios = {}
         for size in range(2, combination_size + 1):
@@ -326,3 +328,21 @@ class Trainer:
             y = y.iloc[:, 0]
         print(f"Datasets de ensemble cargados desde:\n{X_path}\n{y_path}")
         return X, y
+    
+    def ensemble_predict(self, X, best_model, normal_model, condition=0):
+        best_predictions = best_model.predict(X)
+        normal_predictions = normal_model.predict(X)
+        ensemble_predictions = []
+        for i in range(len(best_predictions)):
+            if best_predictions[i] == condition:
+                ensemble_predictions.append(best_predictions[i])
+            else:
+                ensemble_predictions.append(normal_predictions[i])
+        return np.array(ensemble_predictions)
+
+    def evaluate_ensemble(self, y_true, y_pred):
+        macro_f1 = f1_score(y_true, y_pred, average='macro')
+        weighted_f1 = f1_score(y_true, y_pred, average='weighted')
+        cm = confusion_matrix(y_true, y_pred)
+        cls_report = classification_report(y_true, y_pred)
+        return macro_f1, weighted_f1, cm, cls_report
