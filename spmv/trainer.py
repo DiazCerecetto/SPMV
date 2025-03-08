@@ -349,11 +349,6 @@ class Trainer:
             cls_report = classification_report(y_true, y_pred)
             return macro_f1, weighted_f1, cm, cls_report
 
-    def find_scenario_key(self, topn, all_scenarios):
-        for key in all_scenarios.keys():
-            if all(token in key for token in topn):
-                return key
-            return None
     def evaluate_scenarios_test(self, loaded_results, all_scenarios, config, model_trainer):
         test_results = {}
         for scenario_name, scenario_data in loaded_results.items():
@@ -396,3 +391,13 @@ class Trainer:
             model_trainer.ver_matriz_confusion(scenario_name, pd.DataFrame(cm))
         
         return test_results
+    
+    def save_best_scenario(self, best_scenario, filename="best_scenario.txt"):
+        filename = os.path.join(self.config.BASE_PATH, filename)
+        with open(filename, "w") as f:
+            f.write(best_scenario)
+        
+    def load_best_scenario(self, filename="best_scenario.txt"):
+        filename = os.path.join(self.config.BASE_PATH, filename)
+        with open(filename, "r") as f:
+            return f.read()
