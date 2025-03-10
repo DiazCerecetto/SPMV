@@ -357,7 +357,9 @@ class FeatureExtractor:
 
         all_features = []
         all_labels = []
-        all_indices = []  
+        all_indices = []
+        inference_times = []
+
         unique_classes = data['ganador'].unique()
 
         with torch.no_grad():
@@ -366,13 +368,16 @@ class FeatureExtractor:
 
                 for idx, row in class_data.iterrows():
                     img = Image.open(row['path_png']).convert("RGB")
+                    start_time = time.perf_counter()
                     inputs = processor(images=img, return_tensors="pt").to(device)
                     outputs = model(**inputs)
+                    end_time = time.perf_counter()
 
                     features = outputs.last_hidden_state.mean(dim=1).cpu().numpy().flatten()
                     all_features.append(features)
                     all_labels.append(class_label)
                     all_indices.append(idx)
+                    inference_times.append(end_time - start_time)
 
         all_features = np.array(all_features)
         all_labels   = np.array(all_labels)
@@ -390,6 +395,7 @@ class FeatureExtractor:
             index=all_indices,
             columns=[f"vit_feat_{i}" for i in range(dimension)]
         )
+        df_features["time_extraction_sec"] = inference_times
 
         data = data.join(df_features, how="left")
 
