@@ -20,7 +20,14 @@ from sklearn.decomposition import PCA, TruncatedSVD
 from transformers import ViTModel, ViTImageProcessor
 from torchvision import transforms
 from ultralytics import YOLO # type: ignore
-
+from transformers import ViTForImageClassification, ViTImageProcessor
+import torch
+import torch.optim as optim
+from torchvision.datasets import ImageFolder
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import os
 class FeatureExtractor:
     def __init__(self, config):
         self.config = config
@@ -635,3 +642,112 @@ class FeatureExtractor:
             topn = json.load(f)
         
         return topn
+
+    def fine_tune_vit_classifier(self, train_dir, val_dir, num_labels=5, epochs=25, patience=5, lr=2e-5, batch_size=32):
+        
+        device = self.config.device
+        os.makedirs(self.config.PATH_CHECKPOINTS, exist_ok=True)
+        processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224-in21k")
+        transform = Compose([Resize((224,224)), ToTensor(), Normalize(mean=processor.image_mean, std=processor.image_std)])
+        train_dataset = ImageFolder(train_dir, transform=transform)
+        val_dataset = ImageFolder(val_dir, transform=transform)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224-in21k", num_labels=num_labels)
+        model.to(device)
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+        best_val_loss = float('inf')
+        epochs_no_improve = 0
+        train_losses = []
+        val_losses = []
+        for epoch in range(epochs):
+            model.train()
+            running_loss = 0
+            for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images, labels=labels)
+                loss = outputs.loss
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            avg_train_loss = running_loss / len(train_loader)
+            train_losses.append(avg_train_loss)
+            model.eval()
+            running_val_loss = 0
+            correct = 0
+            total = 0
+            with torch.no_grad():
+                for images, labels in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
+                    images, labels = images.to(device), labels.to(device)
+                    outputs = model(images, labels=labels)
+                    loss = outputs.loss
+                    running_val_loss += loss.item()
+                    preds = outputs.logits.argmax(dim=1)
+                    correct += (preds == labels).sum().item()
+                    total += labels.size(0)
+            avg_val_loss = running_val_loss / len(val_loader)
+            val_losses.append(avg_val_loss)
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                checkpoint_path = os.path.join(self.config.PATH_CHECKPOINTS, "best_model_vit.pt")
+                torch.save(model.state_dict(), checkpoint_path)
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                break
+        model.load_state_dict(torch.load(os.path.join(self.config.PATH_CHECKPOINTS, "best_model_vit.pt")))
+        plt.figure(figsize=(10,5))
+        plt.plot(train_losses, label="Pérdida de entrenamiento")
+        plt.plot(val_losses, label="Pérdida de validación")
+        plt.xlabel("Época")
+        plt.ylabel("Pérdida")
+        plt.title("Pérdida por época")
+        plt.legend()
+        plt.show()
+        return model
+
+    def extract_and_visualize_svd_vit_finetuned(self, data, model, processor, num_images_per_class=20, dimension=3, device=None):
+        import torch
+        import time
+        import numpy as np
+        import pandas as pd
+        from PIL import Image
+        model.eval()
+        if device is None:
+            device = self.config.device
+        model.to(device)
+        all_features = []
+        all_labels = []
+        all_indices = []
+        inference_times = []
+        unique_classes = data['ganador'].unique()
+        with torch.no_grad():
+            for class_label in unique_classes:
+                class_data = data[data['ganador'] == class_label].head(num_images_per_class)
+                for idx, row in class_data.iterrows():
+                    img = Image.open(row['path_png']).convert("RGB")
+                    start_time = time.perf_counter()
+                    inputs = processor(images=img, return_tensors="pt").to(device)
+                    outputs = model(**inputs, output_hidden_states=True)
+                    end_time = time.perf_counter()
+                    hidden = outputs.hidden_states[-1]
+                    features = hidden.mean(dim=1).cpu().numpy().flatten()
+                    all_features.append(features)
+                    all_labels.append(class_label)
+                    all_indices.append(idx)
+                    inference_times.append(end_time - start_time)
+        all_features = np.array(all_features)
+        all_labels = np.array(all_labels)
+        reduced_features = self._apply_svd(all_features, dimension)
+        df_plot = self._create_plotly_df(reduced_features, all_labels, dimension)
+        if dimension == 2:
+            self._plot_svd_2d(df_plot)
+        else:
+            self._plot_svd_3d(df_plot)
+        df_features = pd.DataFrame(reduced_features, index=all_indices, columns=[f"vit_feat_{i}" for i in range(dimension)])
+        df_features["time_extraction_sec"] = inference_times
+        data = data.join(df_features, how="left")
+        return data
+
