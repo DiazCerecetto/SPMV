@@ -1,6 +1,7 @@
 import itertools
 import os
 import glob
+import time
 from IPython.display import display, Markdown
 import joblib
 import pandas as pd
@@ -9,12 +10,13 @@ import numpy as np
 import seaborn as sns
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from itertools import combinations
 from ultralytics import YOLO #type: ignore
+from sklearn.impute import SimpleImputer
 
 class Trainer:
     def __init__(self, config):
@@ -234,3 +236,63 @@ class Trainer:
     def load_best_scenario(self, filename="best_scenario.txt"):
         with open(os.path.join(self.config.BASE_PATH, filename),"r") as f:
             return f.read()
+    def evaluate_temporal_hog(self, data_original, data_cleaner, dataset_manager, normal_model_path, hog_model_path):
+        data_original = data_cleaner.clean_data_input_time(data_original)
+        data_original = data_cleaner.encode_tags(data_original)
+
+        time_fields = {
+            0: 'time',
+            1: 'time.1',
+            2: 'time.2',
+            3: 'time.3',
+            4: 'time.4'
+        }
+
+        _, _, X_test_base, _, _, y_test_base = dataset_manager.leer_datasets()
+
+        normal_model = joblib.load(normal_model_path)
+        hog_model = joblib.load(hog_model_path)
+
+        data_test_hog = dataset_manager.leer_features_adicionales('HOG')[2]
+        cols_to_drop = ['group','matrix','ganador','path_png','ganador_encoded','path_png_encoded','time_extraction_sec']
+        X_test_hog, _ = dataset_manager.get_X_y(data_test_hog, cols_to_drop)
+
+        imputer = SimpleImputer(strategy='mean')
+        X_test_hog = pd.DataFrame(imputer.fit_transform(X_test_hog), columns=X_test_hog.columns)
+
+        start_normal = time.perf_counter()
+        preds_normal = normal_model.predict(X_test_base)
+        inference_time_normal = time.perf_counter() - start_normal
+
+        tiempo_total_normal = 0.0
+        for idx, pred_method in zip(X_test_base.index, preds_normal):
+            tiempo_total_normal += data_original.loc[idx, time_fields[pred_method]]
+
+        start_hog = time.perf_counter()
+        preds_hog = hog_model.predict(X_test_hog)
+        inference_time_hog = time.perf_counter() - start_hog
+
+        tiempo_total_hog = 0.0
+        for idx, pred_method in zip(X_test_hog.index, preds_hog):
+            extraction_time = data_test_hog.loc[idx, 'time_extraction_sec']
+            spmv_time = data_original.loc[idx, time_fields[pred_method]]
+            tiempo_total_hog += (extraction_time + spmv_time)
+
+        f1_normal = f1_score(y_test_base, preds_normal, average='macro')
+        acc_normal = accuracy_score(y_test_base, preds_normal)
+        f1_hog = f1_score(y_test_base, preds_hog, average='macro')
+        acc_hog = accuracy_score(y_test_base, preds_hog)
+
+        results_temporales = {
+            "hog": {
+                "Tiempo Modelo Normal (s)": tiempo_total_normal,
+                "Tiempo Modelo hog (s)": tiempo_total_hog,
+                "Tiempo Inferencia Normal": inference_time_normal,
+                "Tiempo Inferencia hog": inference_time_hog,
+                "F1 Normal": f1_normal,
+                "Accuracy Normal": acc_normal,
+                "F1 hog": f1_hog,
+                "Accuracy hog": acc_hog
+            }
+        }
+        return results_temporales
